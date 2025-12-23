@@ -17,7 +17,7 @@
     h1 { font-weight: 700; margin: 0 0 8px; }
     .muted { opacity: .75; }
     .err { color: #c00; font-weight: 600; }
-    code, a { word-break: break-all; }
+    a { word-break: break-all; }
 
     .main {
       display: flex;
@@ -29,10 +29,12 @@
       min-width: 0;
     }
 
-    #qr, #qrPngFallback {
-      display:block; margin: 0 auto; max-width: 100%; height: auto;
+    #qr {
+      display: block;
+      margin: 0 auto;
+      max-width: 100%;
+      height: auto;
     }
-    #qrPngFallback { display: none; } /* only shown if SVG fails */
 
     .policy-banner {
       width: 100%;
@@ -86,93 +88,51 @@
     <div class="main">
       <div class="left">
         <h1>LockLoom — Device Owner Provisioning QR</h1>
-        <div class="muted">Scannable on Android 9+ setup screen (tap “Welcome” 6–7×)</div>
+        <div class="muted">Scannable on Android 13+ setup screen (tap “Welcome” 6–7×)</div>
 
         <div id="status" class="muted" style="margin-top:16px;">Loading…</div>
 
         <p style="margin-top:12px;">
-          <a id="pngLink" href="#" target="_blank" rel="noopener noreferrer">Open PNG</a>
-          · <a id="jsonLink" href="#" target="_blank" rel="noopener noreferrer">Open JSON</a>
-          · <a id="svgLink" href="#" target="_blank" rel="noopener noreferrer">Open SVG</a>
+          <a id="pngLink" href="#" target="_blank" rel="noopener noreferrer">Open full-size PNG</a>
         </p>
 
         <hr/>
-        <p class="muted"></p>
       </div>
 
       <div class="right">
-        <!-- Primary SVG -->
-        <img id="qr" alt="Provisioning QR (SVG)" />
-        <!-- Fallback to PNG if SVG fails -->
-        <img id="qrPngFallback" alt="Provisioning QR (PNG fallback)" />
+        <img id="qr" alt="LockLoom Device Owner Provisioning QR Code (PNG)" />
       </div>
     </div>
   </div>
 
   <script>
   (async () => {
-    const owner = "Dontrell-Tate-Intelligence-LLC";
-    const repo  = "LockLoom";
+    const status  = document.getElementById("status");
+    const qrImg   = document.getElementById("qr");
+    const pngLink = document.getElementById("pngLink");
 
-    const status = document.getElementById("status");
-    const imgSvg = document.getElementById("qr");
-    const imgPng = document.getElementById("qrPngFallback");
-    const pngL   = document.getElementById("pngLink");
-    const jsonL  = document.getElementById("jsonLink");
-    const svgL   = document.getElementById("svgLink");
+    const PNG_URL = "https://northstar-insight.github.io/LockLoom/lockloom-dpc-qr.png";
+    const pngUrlWithCache = PNG_URL + "?v=" + Date.now();
 
-    // Pages URL for the SVG living in /docs
-    const pagesSvg = "https://northstar-insight.github.io/LockLoom/lockloom-dpc-qr.svg";
-    // One-time cache-buster so you see updates immediately after pushing
-    const svgUrl = pagesSvg + "?v=" + Date.now();
+    // Set image + link immediately (works even if GitHub API fails)
+    qrImg.src = pngUrlWithCache;
+    pngLink.href = PNG_URL;
+    pngLink.textContent = "Open full-size PNG";
 
-    // Set SVG and link first; we'll fill PNG/JSON after we read the latest release.
-    imgSvg.src = svgUrl;
-    svgL.href = pagesSvg; // link without cache-buster
-    svgL.textContent = "Open SVG";
-
-    // If SVG fails (e.g., older engines or transient Pages issue), switch to PNG.
-    imgSvg.addEventListener("error", () => {
-      if (imgPng.src) {
-        // We already know the PNG URL from the release – show it.
-        imgSvg.style.display = "none";
-        imgPng.style.display = "block";
-        status.textContent = "SVG failed to render; showing PNG fallback.";
-      } else {
-        status.innerHTML = '<span class="err">Failed to load QR:</span> SVG error and no PNG fallback yet.';
-      }
-    }, { once: true });
-
-    // Populate PNG/JSON links (from latest release), and use PNG as fallback display if needed.
     try {
-      const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases/latest`, {
-        headers: { "Accept": "application/vnd.github+json" },
-        cache: "no-store"
+      const res = await fetch("https://api.github.com/repos/Northstar-Insight/LockLoom/releases/latest", {
+        headers: { "Accept": "application/vnd.github.v3+json" }
       });
-      if (!r.ok) throw new Error(`GitHub API ${r.status}`);
-      const d = await r.json();
-      const png  = d.assets.find(a => a.name === "lockloom-dpc-qr.png");
-      const json = d.assets.find(a => a.name === "lockloom-dpc-qr.json");
 
-      if (png) {
-        pngL.href = png.browser_download_url;
-        pngL.textContent = "Open PNG";
-        imgPng.src = png.browser_download_url; // ready for fallback
-      } else {
-        pngL.remove();
-      }
+      if (!res.ok) throw new Error(`GitHub API: ${res.status}`);
 
-      if (json) {
-        jsonL.href = json.browser_download_url;
-        jsonL.textContent = "Open JSON";
-      } else {
-        jsonL.remove();
-      }
+      const data = await res.json();
+      const version = data.tag_name || data.name || "unknown";
 
-      status.textContent = `Loaded SVG from GitHub Pages; latest release: ${d.tag_name}`;
-    } catch (e) {
-      // We can still show the SVG from Pages even if the API call fails.
-      status.textContent = "Loaded SVG from GitHub Pages.";
+      status.textContent = `Loaded QR from GitHub Pages • latest release: ${version}`;
+    } catch (err) {
+      console.warn("Couldn't fetch release info:", err);
+      status.textContent = "Loaded QR from GitHub Pages";
     }
   })();
   </script>
